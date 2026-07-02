@@ -2,12 +2,12 @@
 
 Prérequis :
     pip install anthropic
-    ant agents create --file agent.yaml   # une seule fois — notez l'ID
-    export LINKEDIN_LEAD_AGENT_ID=<id>
+    ant beta:agents create < agent.yaml   # une seule fois — notez l'ID
     export ANTHROPIC_API_KEY=<clé>
+    export LINKEDIN_LEAD_AGENT_ID=<id>
 
 Usage :
-    python run_agent.py
+    python3 run_agent.py
 """
 
 import os
@@ -23,59 +23,53 @@ def run_lead_session(target_profile: str) -> None:
     """target_profile : description en langage naturel du lead idéal,
     ex. "CTO de startups SaaS françaises de 10 à 50 employés".
     """
-    session = client.beta.agents.sessions.create(
-        agent_id=AGENT_ID,
-        environment={"type": "cloud"},
+    environment = client.beta.environments.create(
+        name="linkedin-lead-env",
+        config={
+            "type": "cloud",
+            "networking": {"type": "unrestricted"},
+        },
     )
-    session_id = session.id
-    print(f"Session créée : {session_id}")
 
-    # Critère de réussite évalué par rubrique (boucle itérer-noter-réviser)
-    outcome = {
-        "type": "user.define_outcome",
-        "rubric": (
-            "L'agent a trouvé et produit exactement 10 leads LinkedIn "
-            "qualifiés correspondant au profil cible, chacun avec une URL "
-            "LinkedIn, une justification de qualification et un message "
-            "d'approche personnalisé prêt à envoyer."
-        ),
-    }
+    session = client.beta.sessions.create(
+        agent={"type": "agent", "id": AGENT_ID},
+        environment_id=environment.id,
+        title=f"Leads : {target_profile[:60]}",
+    )
+    print(f"Session créée : {session.id}\nRecherche en cours...\n")
 
-    # Ouvrir le flux d'événements avant d'envoyer le message de lancement
-    with client.beta.agents.sessions.events.stream(
-        agent_id=AGENT_ID,
-        session_id=session_id,
-    ) as stream:
-        client.beta.agents.sessions.messages.create(
-            agent_id=AGENT_ID,
-            session_id=session_id,
-            messages=[
+    prompt = (
+        f"Trouve 10 leads LinkedIn qualifiés correspondant à ce profil : "
+        f"{target_profile}\n\n"
+        f"Pour chaque lead, fournis :\n"
+        f"- son URL LinkedIn\n"
+        f"- la raison pour laquelle il est qualifié\n"
+        f"- un court message d'approche personnalisé en français\n\n"
+        f"Utilise web_search pour trouver de vrais profils."
+    )
+
+    # Stream-first : ouvrir le flux avant d'envoyer le message
+    with client.beta.sessions.events.stream(session_id=session.id) as stream:
+        client.beta.sessions.events.send(
+            session_id=session.id,
+            events=[
                 {
-                    "role": "user",
-                    "content": (
-                        f"Trouve 10 leads LinkedIn qualifiés correspondant à "
-                        f"ce profil : {target_profile}\n\n"
-                        f"Pour chaque lead, fournis :\n"
-                        f"- son URL LinkedIn\n"
-                        f"- la raison pour laquelle il est qualifié\n"
-                        f"- un court message d'approche personnalisé en français\n\n"
-                        f"Utilise web_search pour trouver de vrais profils."
-                    ),
+                    "type": "user.message",
+                    "content": [{"type": "text", "text": prompt}],
                 }
             ],
-            outcome=outcome,
         )
-
         for event in stream:
-            if event.type == "content_block_delta":
-                delta = event.delta
-                if hasattr(delta, "text"):
-                    print(delta.text, end="", flush=True)
-            elif event.type == "message_stop":
+            if event.type == "agent.message":
+                for block in event.content:
+                    if block.type == "text":
+                        print(block.text, end="", flush=True)
+            elif event.type == "session.status_idle":
+                print("\n\n--- Recherche terminée ---")
+                break
+            elif event.type == "session.status_terminated":
                 print("\n\n--- Session terminée ---")
-            elif event.type == "session.outcome":
-                print(f"\nRésultat : {event.outcome.get('result', 'inconnu')}")
-                print(f"Score : {event.outcome.get('score', 'N/A')}")
+                break
 
 
 if __name__ == "__main__":
