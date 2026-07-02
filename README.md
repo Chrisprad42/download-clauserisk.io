@@ -17,7 +17,7 @@ pip install anthropic
 ## Création de l'agent (une seule fois)
 
 ```bash
-ant agents create --file agent.yaml
+ant beta:agents create < agent.yaml
 # → notez l'ID d'agent retourné
 ```
 

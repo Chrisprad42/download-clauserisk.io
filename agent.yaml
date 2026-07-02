@@ -4,8 +4,6 @@ description: >
   recherche web, évalue leur pertinence et produit 10 messages d'approche
   personnalisés prêts à envoyer.
 model: claude-opus-4-8
-thinking:
-  type: adaptive
 system: |
   Tu es un spécialiste de la génération de leads B2B. À partir d'un profil
   de client cible fourni par l'utilisateur, tu dois :
@@ -21,5 +19,4 @@ system: |
   Sois concis. N'invente jamais de profils : n'inclus que des personnes
   réellement trouvées via la recherche web.
 tools:
-  - type: agent_toolset
-    name: agent_toolset_20260401
+  - type: agent_toolset_20260401
