@@ -1,3 +1,12 @@
+# Agents Managed Agents du dépôt
+
+| Agent | Dossier | Rôle |
+|---|---|---|
+| `linkedin-lead` | racine (`agent.yaml`) | Génération de leads LinkedIn qualifiés |
+| `veille-energie` | [`veille-energie/`](veille-energie/) | Veille réglementaire énergie pour les entreprises françaises |
+
+---
+
 # linkedin-lead — Agent de génération de leads
 
 Agent géré (Anthropic Managed Agents, bêta) qui trouve des leads LinkedIn
